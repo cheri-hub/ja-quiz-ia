@@ -37,8 +37,12 @@ class GeminiService:
     
     def _load_perfumes(self):
         """Carrega os dados dos perfumes do JSON"""
-        # Caminho relativo ao diretório da API -> scrapper folder
-        perfumes_path = Path(__file__).parent.parent / "scrapper" / "perfumes.json"
+        # Usar variável de ambiente ou caminho relativo padrão
+        env_path = os.getenv("PERFUMES_JSON_PATH")
+        if env_path:
+            perfumes_path = Path(env_path)
+        else:
+            perfumes_path = Path(__file__).parent.parent / "scrapper" / "perfumes.json"
         
         if perfumes_path.exists():
             with open(perfumes_path, "r", encoding="utf-8") as f:
