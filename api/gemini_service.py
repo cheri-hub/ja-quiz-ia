@@ -38,9 +38,16 @@ class GeminiService:
     
     def _configure(self):
         """Configura a API do Gemini"""
+        # Limpar a chave de espaços em branco
+        self.api_key = self.api_key.strip() if self.api_key else None
+        
         logger.info(f"Configurando Gemini - API Key presente: {bool(self.api_key)}")
         logger.info(f"Modelo configurado: {self.model_name}")
+        logger.info(f"Tamanho da API Key: {len(self.api_key) if self.api_key else 0}")
+        
         if self.api_key and self.api_key != "sua_chave_api_gemini_aqui":
+            # Configurar como GOOGLE_API_KEY para o SDK usar
+            os.environ["GOOGLE_API_KEY"] = self.api_key
             self.client = genai.Client(api_key=self.api_key)
             logger.info("✓ Cliente Gemini criado com sucesso")
         else:
@@ -194,10 +201,16 @@ RESPONDA APENAS EM JSON válido no seguinte formato (sem markdown):
         try:
             logger.info(f"Chamando Gemini API - modelo: {self.model_name}")
             logger.debug(f"Tamanho do prompt: {len(prompt)} caracteres")
+            logger.debug(f"self.model_name: {self.model_name}")
             
+            # Tentar gerar conteúdo
             response = self.client.models.generate_content(
                 model=self.model_name,
-                contents=prompt
+                contents=prompt,
+                config={
+                    "temperature": 0.7,
+                    "top_p": 0.95,
+                }
             )
             
             logger.info(f"Resposta recebida do Gemini")

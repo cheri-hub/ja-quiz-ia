@@ -19,12 +19,19 @@ from models import (
     ErrorResponse,
     HealthCheck
 )
-from gemini_service import gemini_service
-from quiz_service import quiz_service
+
+# Limpar variáveis de ambiente antigas do sistema APENAS em desenvolvimento
+# (não no Docker onde as variáveis vêm do docker-compose.yml)
+if not os.path.exists("/.dockerenv"):
+    os.environ.pop("GEMINI_API_KEY", None)
+    os.environ.pop("GOOGLE_API_KEY", None)
 
 # Carregar variáveis de ambiente da raiz do projeto
 env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
+
+from gemini_service import gemini_service
+from quiz_service import quiz_service
 
 
 @asynccontextmanager
@@ -236,7 +243,12 @@ async def general_exception_handler(request, exc):
 # ============ MAIN ============
 
 if __name__ == "__main__":
+    import sys
     import uvicorn
+    
+    # Desabilitar geração de arquivos .pyc para o processo e subprocessos
+    os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+    sys.dont_write_bytecode = True
     
     host = os.getenv("API_HOST", "0.0.0.0")
     port = int(os.getenv("API_PORT", 8000))
@@ -245,9 +257,16 @@ if __name__ == "__main__":
     print(f"\n🌐 Servidor iniciando em http://{host}:{port}")
     print(f"📚 Documentação: http://{host}:{port}/docs\n")
     
+    # Configuração do reload - apenas arquivos .py no diretório atual
+    reload_config = {
+        "reload": debug,
+        "reload_includes": ["*.py"],
+        "reload_excludes": ["**/__pycache__/**"]
+    } if debug else {"reload": False}
+    
     uvicorn.run(
         "main:app",
         host=host,
         port=port,
-        reload=debug
+        **reload_config
     )

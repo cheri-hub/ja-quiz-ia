@@ -13,7 +13,7 @@ cd /opt/ja-quiz
 cat > .env << 'EOF'
 # Gemini AI
 GEMINI_API_KEY=sua_chave_gemini_aqui
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 EOF
 ```
 
@@ -31,7 +31,7 @@ services:
       - API_HOST=0.0.0.0
       - API_PORT=8000
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
