@@ -4,6 +4,7 @@ Serviço de integração com Google Gemini para recomendações de perfumes
 import os
 import json
 import re
+import logging
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
@@ -11,6 +12,13 @@ from google import genai
 from dotenv import load_dotenv
 
 from models import QuizAnswers, PerfumeRecomendado, QuizResult
+
+# Configurar logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("gemini_service")
 
 # Carregar variáveis de ambiente da raiz do projeto
 env_path = Path(__file__).parent.parent / ".env"
@@ -30,8 +38,13 @@ class GeminiService:
     
     def _configure(self):
         """Configura a API do Gemini"""
+        logger.info(f"Configurando Gemini - API Key presente: {bool(self.api_key)}")
+        logger.info(f"Modelo configurado: {self.model_name}")
         if self.api_key and self.api_key != "sua_chave_api_gemini_aqui":
             self.client = genai.Client(api_key=self.api_key)
+            logger.info("✓ Cliente Gemini criado com sucesso")
+        else:
+            logger.warning("⚠ API Key não configurada ou inválida")
     
     def _load_perfumes(self):
         """Carrega os dados dos perfumes do JSON"""
@@ -118,10 +131,19 @@ RESPOSTAS DO QUIZ:
     async def get_recommendations(self, answers: QuizAnswers) -> QuizResult:
         """Obtém recomendações de perfumes baseadas nas respostas do quiz"""
         
+        logger.info("="*50)
+        logger.info("INICIANDO get_recommendations")
+        logger.info(f"is_configured: {self.is_configured}")
+        logger.info(f"client: {self.client}")
+        logger.info(f"model_name: {self.model_name}")
+        logger.info(f"api_key (primeiros 10 chars): {self.api_key[:10] if self.api_key else 'None'}...")
+        
         if not self.is_configured:
+            logger.warning("Gemini NÃO configurado - usando fallback")
             # Fallback: recomendação baseada em regras simples
             return self._fallback_recommendations(answers)
         
+        logger.info("Gemini está configurado, gerando recomendação via IA...")
         quiz_context = self._build_quiz_context(answers)
         perfumes_context = self._build_perfumes_context()
         
@@ -170,17 +192,24 @@ RESPONDA APENAS EM JSON válido no seguinte formato (sem markdown):
 }}"""
 
         try:
+            logger.info(f"Chamando Gemini API - modelo: {self.model_name}")
+            logger.debug(f"Tamanho do prompt: {len(prompt)} caracteres")
+            
             response = self.client.models.generate_content(
                 model=self.model_name,
                 contents=prompt
             )
             
+            logger.info(f"Resposta recebida do Gemini")
+            logger.debug(f"Tipo da resposta: {type(response)}")
+            
             # Verificar se a resposta tem texto
             if not response or not response.text:
-                print("Gemini retornou resposta vazia, usando fallback")
+                logger.warning("Gemini retornou resposta vazia, usando fallback")
                 return self._fallback_recommendations(answers)
             
             result_text = response.text.strip()
+            logger.info(f"Texto recebido ({len(result_text)} chars): {result_text[:200]}...")
             
             # Limpar resposta (remover markdown se presente)
             if result_text.startswith("```"):
@@ -227,6 +256,7 @@ RESPONDA APENAS EM JSON válido no seguinte formato (sem markdown):
                     if not any(r.nome == fb_rec.nome for r in recomendacoes):
                         recomendacoes.append(fb_rec)
             
+            logger.info("✓ Recomendações geradas com sucesso via Gemini AI!")
             return QuizResult(
                 sucesso=True,
                 mensagem="Recomendações geradas com Gemini AI!",
@@ -236,16 +266,16 @@ RESPONDA APENAS EM JSON válido no seguinte formato (sem markdown):
             )
             
         except json.JSONDecodeError as e:
-            print(f"Erro ao parsear JSON do Gemini: {e}")
+            logger.error(f"Erro ao parsear JSON do Gemini: {e}")
             try:
-                print(f"Resposta recebida: {result_text[:500] if result_text else 'vazia'}")
+                logger.error(f"Resposta recebida: {result_text[:500] if result_text else 'vazia'}")
             except:
                 pass
             return self._fallback_recommendations(answers)
         except Exception as e:
-            print(f"Erro na API Gemini: {type(e).__name__}: {e}")
+            logger.error(f"Erro na API Gemini: {type(e).__name__}: {e}")
             import traceback
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             return self._fallback_recommendations(answers)
     
     def _find_perfume(self, nome: str) -> Optional[Dict]:
@@ -273,6 +303,9 @@ RESPONDA APENAS EM JSON válido no seguinte formato (sem markdown):
     
     def _fallback_recommendations(self, answers: QuizAnswers) -> QuizResult:
         """Recomendações baseadas em regras quando Gemini não está disponível"""
+        logger.warning("="*50)
+        logger.warning("USANDO FALLBACK - Gemini não disponível ou falhou")
+        logger.warning("="*50)
         
         # Filtrar por categoria
         categoria_map = {

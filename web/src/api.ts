@@ -1,6 +1,8 @@
 import type { QuizAnswers, QuizQuestionsResponse, QuizResult } from "./types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+// Em produção usa /api (nginx proxy), em desenvolvimento usa localhost
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.PROD ? "/api" : "http://localhost:8000");
 
 class ApiService {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
