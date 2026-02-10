@@ -7,7 +7,7 @@ import re
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 
 from models import QuizAnswers, PerfumeRecomendado, QuizResult
@@ -22,7 +22,8 @@ class GeminiService:
     
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model = None
+        self.client = None
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
         self.perfumes_data: List[Dict] = []
         self._configure()
         self._load_perfumes()
@@ -30,10 +31,7 @@ class GeminiService:
     def _configure(self):
         """Configura a API do Gemini"""
         if self.api_key and self.api_key != "sua_chave_api_gemini_aqui":
-            genai.configure(api_key=self.api_key)
-            # Usar modelo do .env ou fallback para gemini-1.5-flash
-            model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-            self.model = genai.GenerativeModel(model_name)
+            self.client = genai.Client(api_key=self.api_key)
     
     def _load_perfumes(self):
         """Carrega os dados dos perfumes do JSON"""
@@ -54,7 +52,7 @@ class GeminiService:
     @property
     def is_configured(self) -> bool:
         """Verifica se o Gemini está configurado"""
-        return self.model is not None
+        return self.client is not None
     
     @property
     def perfumes_count(self) -> int:
@@ -172,7 +170,10 @@ RESPONDA APENAS EM JSON válido no seguinte formato (sem markdown):
 }}"""
 
         try:
-            response = self.model.generate_content(prompt)
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
             
             # Verificar se a resposta tem texto
             if not response or not response.text:
